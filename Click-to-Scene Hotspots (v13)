@@ -1,0 +1,65 @@
+// File: module.json
+{
+  "name": "click-to-scene-v13",
+  "title": "Click-to-Scene Hotspots (v13)",
+  "description": "A Foundry VTT v13 module allowing Drawings to act as clickable hotspots that navigate scenes.",
+  "version": "1.0.0",
+  "author": "Hella",
+  "minimumCoreVersion": "0.8.9",
+  "compatibleCoreVersion": "1.0.0",
+  "scripts": ["scripts/main.js"],
+  "esmodules": [],
+  "styles": [],
+  "packs": [],
+  "socket": [],
+  "flags": {},
+  "url": "https://github.com/YourRepo/click-to-scene-v13",
+  "manifest": "https://raw.githubusercontent.com/YourRepo/click-to-scene-v13/master/module.json",
+  "download": "https://github.com/YourRepo/click-to-scene-v13/archive/refs/heads/master.zip"
+}
+
+// File: scripts/main.js
+
+Hooks.once('init', () => {
+  console.log('click-to-scene-v13 | Initializing Click-to-Scene Hotspots');
+});
+
+Hooks.on('getDrawingConfig', (drawing, config) => {
+  // Add a scene-target field in the drawing config
+  config.tabs.push({
+    navSelector: '.sheet-body', title: 'Hotspot', icon: 'fas fa-map-signs', tabId: 'click2scene'
+  });
+  // Extend default form
+  const html = config.html;
+  html.find('.sheet-body').append(`
+    <div id="click2scene">
+      <label>Target Scene:</label>
+      <select name="flags.click-to-scene-v13.targetScene">
+        <option value="">-- Select Scene --</option>
+        ${game.scenes.map(s => `
+          <option value="${s.id}" \${drawing.document.getFlag('click-to-scene-v13','targetScene')===s.id?'selected':''}>\${s.name}</option>
+        `).join('')}
+      </select>
+    </div>
+  `);
+});
+
+Hooks.on('renderDrawingConfig', (app, html, data) => {
+  // Nothing extra here; fields save automatically
+});
+
+Hooks.on('canvasReady', () => {
+  // Add click listener for hotspots
+  canvas.app.renderer.plugins.interaction.on('pointerdown', (event) => {
+    const { x, y } = event.data.getLocalPosition(canvas.stage);
+    canvas.drawings.placeables.forEach(d => {
+      const target = d.document.getFlag('click-to-scene-v13','targetScene');
+      if (!target) return;
+      const bounds = d.object.getBounds();
+      if (x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height) {
+        const scene = game.scenes.get(target);
+        if (scene) scene.activate();
+      }
+    });
+  });
+});
